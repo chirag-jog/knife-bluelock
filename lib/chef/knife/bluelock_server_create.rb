@@ -78,7 +78,8 @@ class Chef
       option :enable_firewall,
         :long => "--enable-firewall",
         :description => "Install a Firewall to control public network access",
-        :default => true
+        :boolean => true,
+        :default => false
 
       option :tcp_ports,
         :short => "-T X,Y,Z",
@@ -183,12 +184,15 @@ class Chef
         password = Chef::Config[:knife][:ssh_password]
         puts "Instantiating vApp #{h.color(server_name, :bold)}"
     
+        image = Chef::Config[:knife][:image]
+        vcloud.catalogs.each do |catalog| 
+            catalog.catalog_items.find{|catalog_item| catalog_item.href.scan(image)}
+        end
         server_spec = {
             :name =>  Chef::Config[:knife][:server_name], 
-            :image => Chef::Config[:knife][:image], 
+            :image => item, 
         }
-        #server = vcloud.servers.create(server_spec)
-        server = vcloud.get_server("https://zone01.bluelock.com/api/vApp/vm-e47ee28b-f6ab-4951-a9ce-95a8666fa517")
+        server = vcloud.servers.create(server_spec)
         print "Instantiated vApp named [#{h.color(server.name, :bold)}] as [#{h.color(server.href.split('/').last.to_s, :bold)}]"
         print "\n#{ui.color("Waiting for server to be Instantiated", :magenta)}"
 
@@ -209,7 +213,8 @@ class Chef
         enable_firewall=false
         portmap=nil
 
-        if locate_config_value(:enable_firewall)
+        puts("Firewall: #{config[:enable_firewall]}")
+        if config[:enable_firewall]
           print "\n#{ui.color("Creating Internet and Node Services for SSH and other services", :magenta)}"
           tcp_ports = config[:tcp_ports] + [22] # Ensure we always open the SSH Port
           udp_ports = config[:udp_ports]
@@ -235,13 +240,14 @@ class Chef
         server.power_on
         print "\n#{ui.color("Waiting for server to be Powered On", :magenta)}"
         server.wait_for { print "."; on? }
-        
-        puts "#{ui.color("Server Public IP Address", :cyan)}: #{server.network_connections[:ExternalIpAddress]}"
-        puts "#{ui.color("Server Private IP Address", :cyan)}: #{server.network_connections[:IpAddress]}"
+        public_ip_address = server.network_connections[:ExternalIpAddress]
+        private_ip_address = server.network_connections[:IpAddress] 
+        puts "#{ui.color("Server Public IP Address", :cyan)}: #{public_ip_address}"
+        puts "#{ui.color("Server Private IP Address", :cyan)}: #{private_ip_address}"
         puts "#{ui.color("Server Password", :cyan)}: #{server.password}"
         print "\n#{ui.color("Waiting for sshd.", :magenta)}"
         puts("\n")
-        print(".") until tcp_test_ssh(server.PublicIpAddress, "22") { sleep @initial_sleep_delay ||= 10; puts("done") }
+        print(".") until tcp_test_ssh(public_ip_address, "22") { sleep @initial_sleep_delay ||= 10; puts("done") }
         puts "\nBootstrapping #{h.color(server_name, :bold)}..."
         bootstrap_for_node(server).run
       end

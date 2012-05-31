@@ -61,11 +61,11 @@ class Chef
         $stdout.sync = true
 
         images_list = [ h.color('ID', :bold), h.color('Name', :bold), h.color('Type', :bold) ]
-        bluelock.catalogs.all.each do |catalog|
-          catalog.catalog_items.all.each do |catalog_item|
-            images_list << catalog_item.href
-            images_list << catalog_item.name
-            images_list << catalog.name
+        bluelock.catalogs.each do |catalog|
+          catalog.catalog_items.each do |catalog_item|
+            images_list << catalog_item.href.split('/').last.to_s
+            images_list << catalog_item.name.to_s
+            images_list << catalog.name.to_s
           end
         end
         puts h.list(images_list, :columns_across, 3)
