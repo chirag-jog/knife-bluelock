@@ -188,7 +188,6 @@ class Chef
         vcpus = Chef::Config[:knife][:vcpus]
         memory = Chef::Config[:knife][:memory]
         password = Chef::Config[:knife][:ssh_password]
-        puts "Instantiating vApp #{h.color(server_name, :bold)}"
     
         image = Chef::Config[:knife][:image]
         server_spec = {
@@ -205,11 +204,11 @@ class Chef
         end
 
         if server_spec[:catalog_item_uri].nil?
-            ui.error("Cannot find Image : #{image}")
+            ui.error("Cannot find Image in the Catalog: #{image}")
             exit 1
         end
         vapp = vcloud.servers.create(server_spec)
-        print "Instantiated vApp named [#{h.color(vapp.name, :bold)}] as [#{h.color(vapp.href.split('/').last.to_s, :bold)}]"
+        print "Instantiating Server(vApp) named #{h.color(vapp.name, :bold)} with id #{h.color(vapp.href.split('/').last.to_s, :bold)}"
         print "\n#{ui.color("Waiting for server to be Instantiated", :magenta)}"
 
         # wait for it to be ready to do stuff
@@ -217,26 +216,26 @@ class Chef
         puts("\n")
         vapp = vcloud.get_vapp(vapp.href)
         server = vcloud.get_server(vapp.children[:href])
-        if not vcpus.empty?
+        print "\n#{ui.color("Configuring the server as required", :magenta)}"
+        if not vcpus.nil?
           server.cpus
           server.cpus = vcpus
           server.save
         end
 
-        if not memory.empty?
+        if not memory.nil?
           server.memory
           server.memory = memory
           server.save
         end
 
-        if not password.empty?
+        if not password.nil?
           server.password
           server.password = password
           server.save
         end
 
         # NAT 
-        print "Configure NAT services for #{vapp.name}\n"
         vapp = server.vapp 
         vapp_network = vapp.network_configs[:NetworkConfig][:networkName]
         vapp_network_uri =vapp.network_configs[:NetworkConfig][:Link][:href]
@@ -246,7 +245,7 @@ class Chef
         portmap=nil
 
         if config[:enable_firewall]
-          print "\n#{ui.color("Creating Internet and Node Services for SSH and other services", :magenta)}"
+          print "\n#{ui.color("Enable Internet Access for SSH and other services", :magenta)}"
           tcp_ports = config[:tcp_ports] + ["22"] # Ensure we always open the SSH Port
           udp_ports = config[:udp_ports]
 
@@ -271,6 +270,7 @@ class Chef
         server.power_on
         print "\n#{ui.color("Waiting for server to be Powered On", :magenta)}"
         server.wait_for { print "."; on? }
+        puts("\n")
         public_ip_address = server.network_connections[:ExternalIpAddress]
         private_ip_address = server.network_connections[:IpAddress] 
         puts "#{ui.color("Server Public IP Address", :cyan)}: #{public_ip_address}"

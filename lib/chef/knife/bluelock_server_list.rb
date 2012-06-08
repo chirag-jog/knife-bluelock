@@ -62,6 +62,7 @@ class Chef
         server_list = [
             h.color('ID', :bold), 
             h.color('Name', :bold),
+            h.color('Password', :bold),
             h.color('PublicIP', :bold),
             h.color('PrivateIP', :bold),
             h.color('OperatingSystem', :bold)
@@ -72,6 +73,7 @@ class Chef
           vapp.servers.all.each do |server|
             server_list << vapp.href.split('/').last
             server_list << vapp.name.to_s
+            server_list << server.password.to_s
             server_list << server.network_connections[:ExternalIpAddress].to_s
             server_list << server.network_connections[:IpAddress].to_s
             server_list << server.operating_system[:"ovf:Description"].to_s
