@@ -9,8 +9,8 @@ Gem::Specification.new do |s|
   s.extra_rdoc_files = ["README.rdoc", "LICENSE" ]
   s.summary = "Bluelock Cloud Support for Chef's Knife Command"
   s.description = s.summary
-  s.author = "Adam Jacob"
-  s.email = "adam@opscode.com"
+  s.author = "Chirag Jog"
+  s.email = "chiragj@websym.com"
   s.homepage = "http://wiki.opscode.com/display/chef"
 
   s.add_dependency "chef", ">= 0.9.14"
