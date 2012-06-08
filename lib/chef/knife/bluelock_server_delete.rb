@@ -64,13 +64,17 @@ class Chef
           :vcloud_version => '1.5'
         )
         vapps = bluelock.vapps.all
+        vapp = nil
         @name_args.each do |vapp_id|
-          vapps.find {|vapp| vapp.href.scan(vapp_id)}
-          msg_pair("vApp Name", vapp.name)
-          puts "\n"
-          confirm("Do you really want to delete this server")
-          vapp.servers.first.destroy
-          ui.warn("Deleted server #{server.id}")
+          vapp = vapps.find {|v| v.name == vapp_id }
+          if vapp.nil?
+            ui.warn("Cannot find vapp #{vapp_id}")
+            next
+          end
+          confirm("Do you really want to delete this server #{vapp.name} ")
+          server = bluelock.get_server(vapp.href)
+          server.destroy
+          ui.warn("Deleted server #{vapp.name}")
         end
       end
     end

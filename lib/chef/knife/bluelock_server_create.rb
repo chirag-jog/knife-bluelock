@@ -86,7 +86,7 @@ class Chef
         :long => "--tcp X,Y,Z",
         :description => "TCP ports to be made accessible for this server",
         :proc => Proc.new { |tcp| tcp.split(',') },
-        :default => []
+        :default => ["22"]
 
       option :udp_ports,
         :short => "-U X,Y,Z",
@@ -153,6 +153,12 @@ class Chef
       rescue Errno::EHOSTUNREACH
         sleep 2
         false
+     rescue Errno::ENETUNREACH
+        sleep 2
+        false
+     rescue Errno::ECONNRESET
+        sleep 2
+        false 
       ensure
         tcp_socket && tcp_socket.close
       end
@@ -179,33 +185,59 @@ class Chef
             :vcloud_version => '1.5'
         )
 
-        vcpus = Chef::Config[:knife][:no_of_vcpus]
+        vcpus = Chef::Config[:knife][:vcpus]
         memory = Chef::Config[:knife][:memory]
         password = Chef::Config[:knife][:ssh_password]
         puts "Instantiating vApp #{h.color(server_name, :bold)}"
     
         image = Chef::Config[:knife][:image]
-        vcloud.catalogs.each do |catalog| 
-            catalog.catalog_items.find{|catalog_item| catalog_item.href.scan(image)}
-        end
         server_spec = {
             :name =>  Chef::Config[:knife][:server_name], 
-            :image => item, 
+            :catalog_item_uri => nil
         }
-        server = vcloud.servers.create(server_spec)
-        print "Instantiated vApp named [#{h.color(server.name, :bold)}] as [#{h.color(server.href.split('/').last.to_s, :bold)}]"
+        catalog = vcloud.catalogs.each do |catalog| 
+            catalog_items = catalog.catalog_items
+            catalog = catalog_items.find{|catalog_item| catalog_item.href.scan(image).size > 0 }
+            if catalog
+                server_spec[:catalog_item_uri] = catalog.href
+                break
+            end
+        end
+
+        if server_spec[:catalog_item_uri].nil?
+            ui.error("Cannot find Image : #{image}")
+            exit 1
+        end
+        vapp = vcloud.servers.create(server_spec)
+        print "Instantiated vApp named [#{h.color(vapp.name, :bold)}] as [#{h.color(vapp.href.split('/').last.to_s, :bold)}]"
         print "\n#{ui.color("Waiting for server to be Instantiated", :magenta)}"
 
         # wait for it to be ready to do stuff
-        server.wait_for { print "."; ready? }
+        vapp.wait_for { print "."; ready? }
         puts("\n")
-        server.cpus = vcpus if vcpus
-        server.memory = memory if memory
-        server.password = password if password
-        server.save
+        vapp = vcloud.get_vapp(vapp.href)
+        server = vcloud.get_server(vapp.children[:href])
+        if not vcpus.empty?
+          server.cpus
+          server.cpus = vcpus
+          server.save
+        end
+
+        if not memory.empty?
+          server.memory
+          server.memory = memory
+          server.save
+        end
+
+        if not password.empty?
+          server.password
+          server.password = password
+          server.save
+        end
 
         # NAT 
-        vapp = server.vapp    
+        print "Configure NAT services for #{vapp.name}\n"
+        vapp = server.vapp 
         vapp_network = vapp.network_configs[:NetworkConfig][:networkName]
         vapp_network_uri =vapp.network_configs[:NetworkConfig][:Link][:href]
         org_network = vcloud.networks.all.find{|net| not net.name.scan("internet").empty? }
@@ -213,10 +245,9 @@ class Chef
         enable_firewall=false
         portmap=nil
 
-        puts("Firewall: #{config[:enable_firewall]}")
         if config[:enable_firewall]
           print "\n#{ui.color("Creating Internet and Node Services for SSH and other services", :magenta)}"
-          tcp_ports = config[:tcp_ports] + [22] # Ensure we always open the SSH Port
+          tcp_ports = config[:tcp_ports] + ["22"] # Ensure we always open the SSH Port
           udp_ports = config[:udp_ports]
 
           services_spec = {"TCP" => tcp_ports.uniq, "UDP" => udp_ports.uniq}
@@ -258,7 +289,7 @@ class Chef
         bootstrap.config[:run_list] = config[:run_list]
         bootstrap.config[:ssh_user] = "root"
         bootstrap.config[:ssh_password] = server.password
-        bootstrap.config[:chef_node_name] = locate_config_value(:chef_node_name) || vapp.name
+        bootstrap.config[:chef_node_name] = locate_config_value(:chef_node_name) || server.name
         bootstrap.config[:distro] = locate_config_value(:distro)
         bootstrap.config[:bootstrap_version] = locate_config_value(:bootstrap_version)
         bootstrap.config[:use_sudo] = true unless config[:ssh_user] == 'root'
