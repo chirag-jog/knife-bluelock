@@ -28,7 +28,6 @@ class Chef
 
       deps do
         require 'fog'
-        require 'readline'
         require 'chef/json_compat'
         require 'chef/knife/bootstrap'
         Chef::Knife::Bootstrap.load_deps
@@ -214,7 +213,10 @@ class Chef
         # wait for it to be ready to do stuff
         vapp.wait_for { print "."; ready? }
         puts("\n")
+        #Fetch additional vApp information (incl. networking, children etc)
         vapp = vcloud.get_vapp(vapp.href)
+
+        #Fetch the associated VM information for further configuration
         server = vcloud.get_server(vapp.children[:href])
         print "\n#{ui.color("Configuring the server as required", :magenta)}"
         if not vcpus.nil?
@@ -235,7 +237,7 @@ class Chef
           server.save
         end
 
-        # NAT 
+        # Configure NAT, Firewall etc 
         vapp = server.vapp 
         vapp_network = vapp.network_configs[:NetworkConfig][:networkName]
         vapp_network_uri =vapp.network_configs[:NetworkConfig][:Link][:href]

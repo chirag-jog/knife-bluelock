@@ -69,6 +69,7 @@ class Chef
         
         ]
         vapps = bluelock.vapps.all
+        #Fetch each VM (server) info from each vApp available
         for vapp in vapps
           vapp.servers.all.each do |server|
             server_list << vapp.href.split('/').last

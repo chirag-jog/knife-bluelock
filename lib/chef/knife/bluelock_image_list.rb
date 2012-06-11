@@ -46,10 +46,10 @@ class Chef
       end
 
       def run 
-	unless Chef::Config[:knife][:bluelock_username] && Chef::Config[:knife][:bluelock_password]
-	  ui.error("Missing Credentials")
-	  exit 1
-	end
+	    unless Chef::Config[:knife][:bluelock_username] && Chef::Config[:knife][:bluelock_password]
+	      ui.error("Missing Credentials")
+	      exit 1
+	    end
 
         bluelock = Fog::Vcloud::Compute.new(
           :vcloud_username => Chef::Config[:knife][:bluelock_username],
@@ -61,6 +61,7 @@ class Chef
         $stdout.sync = true
 
         images_list = [ h.color('ID', :bold), h.color('Name', :bold), h.color('Type', :bold) ]
+        #There are two types of Catalog - Private and Public. Each of which contains images(catalog items)
         bluelock.catalogs.each do |catalog|
           catalog.catalog_items.each do |catalog_item|
             images_list << catalog_item.href.split('/').last.to_s
