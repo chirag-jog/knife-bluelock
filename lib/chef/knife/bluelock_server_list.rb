@@ -70,18 +70,19 @@ class Chef
         ]
         vapps = bluelock.vapps.all
         #Fetch each VM (server) info from each vApp available
-        for vapp in vapps
-          vapp.servers.all.each do |server|
-            server_list << vapp.href.split('/').last
-            server_list << vapp.name.to_s
-            server_list << server.password.to_s
-            server_list << server.network_connections[:ExternalIpAddress].to_s
-            server_list << server.network_connections[:IpAddress].to_s
-            server_list << server.operating_system[:"ovf:Description"].to_s
+        if vapps
+          for vapp in vapps
+            vapp.servers.all.each do |server|
+              server_list << vapp.href.split('/').last
+              server_list << vapp.name.to_s
+              server_list << server.password.to_s
+              server_list << server.network_connections[:ExternalIpAddress].to_s
+              server_list << server.network_connections[:IpAddress].to_s
+              server_list << server.operating_system[:"ovf:Description"].to_s
+            end
           end
         end
-        puts h.list(server_list, :columns_across, 5)
-
+        puts h.list(server_list, :columns_across, 6)
       end
     end
   end

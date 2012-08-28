@@ -40,7 +40,6 @@ class Chef
         :description => "Your bluelock username",
         :proc => Proc.new { |username| Chef::Config[:knife][:bluelock_username] = username } 
 
-
       def h
         @highline ||= HighLine.new
       end
@@ -70,10 +69,7 @@ class Chef
           end
         end
         puts h.list(images_list, :columns_across, 3)
-
       end
     end
   end
 end
-
-

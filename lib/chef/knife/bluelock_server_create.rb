@@ -107,7 +107,7 @@ class Chef
         :proc => Proc.new { |template| Chef::Config[:knife][:image] = template }
 
       option :vcpus,
-        :long => "--vcpu VCPUS",
+        :long => "--vcpus VCPUS",
         :description => "Defines the number of vCPUS per VM. Possible values are 1,2,4,8",
         :proc => Proc.new { |vcpu| Chef::Config[:knife][:vcpus] = vcpu }
 
